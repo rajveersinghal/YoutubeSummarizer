@@ -1,0 +1,215 @@
+.learn-dashboard {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 50px;
+  padding: 17vh 24px 24px;
+}
+
+.title-group {
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  animation: titleFadeIn 0.8s var(--ease-decelerate);
+}
+
+.page-title {
+  font-size: clamp(4rem, 9vw, 6rem);
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  animation: titlePulse 3s ease-in-out infinite;
+}
+
+.page-subtitle {
+  font-size: clamp(1.25rem, 4vw, 1.875rem);
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin: var(--spacing-lg) 0 0;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  animation: subtitleFadeIn 0.8s var(--ease-decelerate) 0.2s both;
+}
+
+/* Wrapper that syncs the subtitle and form */
+.synced-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 50px;
+}
+
+.form-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* --- Modern Input Component Styles --- */
+
+.modern-input-wrapper {
+  width: 100%;
+  max-width: 680px;
+}
+
+.input-container {
+  display: flex;
+  align-items: flex-end; /* Align to bottom for multiline */
+  gap: 8px;
+  padding: 8px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 24px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 64px; /* Min height to match buttons */
+  height: auto; /* Allow container to grow */
+}
+
+.input-container:focus-within {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+}
+
+/* Base styles for all buttons inside the input */
+.input-button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background-color: var(--bg-tertiary);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  width: 48px;
+  height: 48px;
+}
+
+.input-button:hover {
+  background-color: var(--border-primary);
+  transform: scale(1.05);
+}
+
+.input-button:active {
+  transform: scale(0.95);
+}
+
+.input-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+/* --- REMOVED MODE-SWITCHER STYLES --- */
+
+/* Upload Button (+) */
+.upload-btn {
+  /* Styles are in .input-button */
+}
+
+/* --- MODIFIED: Simplified Input Container --- */
+.input-fields-container {
+  flex-grow: 1;
+  position: relative;
+  /* Set initial height to match one line of text + padding */
+  height: auto;
+  min-height: 48px;
+  display: flex;
+}
+
+.modern-input {
+  /* --- MODIFIED: This is now a textarea --- */
+  width: 100%;
+  height: auto;
+  min-height: 48px; /* Match button height */
+  max-height: 200px; /* Limit growth */
+  padding: 12px 8px; /* Vertical padding */
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-family: 'Sora', sans-serif;
+  resize: none;
+  line-height: 1.5;
+  overflow-y: auto;
+}
+
+.modern-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+/* --- REMOVED ALL SLIDING ANIMATION CSS --- */
+
+/* Submit Button (Arrow) */
+.modern-submit-btn {
+  background-color: var(--accent-primary);
+}
+
+.modern-submit-btn .input-icon {
+  color: white;
+}
+
+html.dark .modern-submit-btn .input-icon {
+  color: var(--text-primary);
+}
+
+.modern-submit-btn:hover {
+  filter: brightness(1.1);
+  transform: scale(1.05);
+}
+
+.modern-submit-btn:active {
+  filter: brightness(0.9);
+  transform: scale(0.95);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .learn-dashboard {
+    padding: 12vh 16px 16px;
+    gap: 40px;
+  }
+
+  .synced-content {
+    gap: 40px;
+  }
+
+  .input-container {
+    min-height: 60px;
+  }
+
+  .input-button {
+    width: 44px;
+    height: 44px;
+  }
+}age-subtitle,
+    .synced-content {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .title-group,
+      .page-subtitle,
+      .synced-content {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }

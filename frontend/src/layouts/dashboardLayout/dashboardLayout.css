@@ -1,0 +1,888 @@
+/* =============================================================================
+   DASHBOARD SIDEBAR - ENHANCED PRODUCTION CSS
+   Supports both localStorage and API-based chat loading
+   ============================================================================= */
+
+/* --- CSS Variables --- */
+:root {
+  /* Typography */
+  --gemini-font: "Google Sans", "Roboto", "Arial", sans-serif;
+  
+  /* Layout */
+  --sidebar-width: 280px;
+  --sidebar-width-collapsed: 0px;
+  --transition-speed: 0.3s;
+  --transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+  
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-pill: 30px;
+  
+  /* Z-index Layers */
+  --z-sidebar-toggle: 1200;
+  --z-sidebar: 1100;
+  --z-content: 1000;
+  --z-toast: 1300;
+}
+
+/* --- Base Layout --- */
+.dashboard-shell {
+  display: flex;
+  height: 100vh;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  overflow: hidden;
+  position: relative;
+}
+
+/* --- Sidebar Container --- */
+.sidebar {
+  width: var(--sidebar-width-collapsed);
+  height: 100vh;
+  background-color: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  transition: all var(--transition-speed) var(--transition-timing);
+  overflow: hidden;
+  position: relative;
+  z-index: var(--z-sidebar);
+  flex-shrink: 0;
+}
+
+/* Expanded Sidebar State */
+.dashboard-shell.expanded .sidebar {
+  width: var(--sidebar-width);
+  padding: var(--spacing-xl);
+  margin: var(--spacing-md);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 
+              0 1px 3px rgba(0, 0, 0, 0.05);
+  height: calc(100vh - 24px);
+}
+
+/* --- Content Wrapper --- */
+.content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  min-width: 0;
+  position: relative;
+}
+
+/* --- Sidebar Toggle Buttons --- */
+.sidebar-open-button {
+  position: fixed;
+  top: var(--spacing-lg);
+  left: var(--spacing-lg);
+  z-index: var(--z-sidebar-toggle);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  width: 40px;
+  height: 40px;
+}
+
+.sidebar-open-button:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-open-button:active {
+  transform: translateY(0);
+}
+
+.dashboard-shell.expanded .sidebar-open-button {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar-toggle-button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+}
+
+.sidebar-toggle-button:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.sidebar-toggle-button:active {
+  transform: scale(0.95);
+}
+
+/* --- Sidebar Header --- */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  margin-bottom: var(--spacing-2xl);
+  gap: var(--spacing-md);
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.logo-img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* --- Sidebar Navigation --- */
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  min-height: 0;
+  
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background-color: var(--border-primary);
+  border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-secondary);
+}
+
+/* --- Sidebar Footer --- */
+.sidebar-footer {
+  padding-top: var(--spacing-lg);
+  margin-top: auto;
+  border-top: 1px solid var(--border-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-shrink: 0;
+}
+
+/* --- Main Content --- */
+.main-content {
+  flex: 1;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.main-content > div {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =============================================================================
+   SIDEBAR COMPONENTS
+   ============================================================================= */
+
+/* --- Shared Text & Icon Styles --- */
+.sidebar-text {
+  font-family: var(--gemini-font);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.sidebar-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+/* --- New Chat Button --- */
+.sidebar-new-chat-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-pill);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid transparent;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-new-chat-button:hover {
+  background-color: var(--hover-bg);
+  border-color: var(--border-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-new-chat-button:active {
+  transform: translateY(0);
+}
+
+.sidebar-new-chat-button .sidebar-text {
+  color: var(--text-primary);
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-new-chat-button .sidebar-icon {
+  color: var(--text-primary);
+}
+
+/* --- Search Chats Input --- */
+.sidebar-search-chat {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-pill);
+  background-color: var(--bg-secondary);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.sidebar-search-chat:focus-within {
+  background-color: var(--hover-bg);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 10%, transparent);
+}
+
+.sidebar-search-chat .sidebar-icon {
+  color: var(--text-secondary);
+}
+
+.sidebar-search-chat input {
+  background: none;
+  border: none;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+  color: var(--text-primary);
+  padding: 0;
+  margin: 0;
+  font-family: var(--gemini-font);
+  font-size: 14px;
+}
+
+.sidebar-search-chat input::placeholder {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+/* --- Keyboard Shortcuts --- */
+.sidebar-shortcut {
+  font-family: var(--gemini-font);
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  margin-left: auto;
+  padding: 2px 6px;
+  background-color: var(--bg-secondary);
+  border-radius: 4px;
+  border: 1px solid var(--border-primary);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.shortcut-on-hover {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transform: translateX(-4px);
+}
+
+.sidebar-new-chat-button:hover .shortcut-on-hover,
+.sidebar-search-chat:hover .shortcut-on-hover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+/* =============================================================================
+   RECENT CHATS SECTION
+   ============================================================================= */
+
+.recent-chats-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-primary);
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-primary) transparent;
+}
+
+.recent-chats-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.recent-chats-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.recent-chats-list::-webkit-scrollbar-thumb {
+  background-color: var(--border-primary);
+  border-radius: 3px;
+}
+
+.recent-chats-list::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-secondary);
+}
+
+.recent-chats-title {
+  font-family: var(--gemini-font);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding: 0 var(--spacing-lg) var(--spacing-sm);
+  text-transform: uppercase;
+  white-space: nowrap;
+  letter-spacing: 0.8px;
+}
+
+.recent-chats-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.recent-chats-list li {
+  margin: 0;
+}
+
+/* --- Navigation Links & Delete Button --- */
+.recent-chats-list .nav-link {
+  display: flex;
+  align-items: center;
+  padding: 10px var(--spacing-lg);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+  padding-right: 40px; /* Make space for delete button */
+}
+
+.recent-chats-list .nav-link:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.recent-chats-list .nav-link.active {
+  background-color: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.recent-chats-list .nav-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background-color: var(--accent-primary);
+  border-radius: 0 2px 2px 0;
+}
+
+.nav-link .nav-text {
+  font-family: var(--gemini-font);
+  font-size: 14px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Delete Button Styles */
+.delete-chat-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0; /* Hidden by default */
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-link:hover .delete-chat-btn {
+  opacity: 1;
+}
+
+.delete-chat-btn:hover {
+  background-color: rgba(255, 0, 0, 0.1);
+  color: #ef4444;
+}
+
+/* --- Undo Toast Notification --- */
+.undo-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1a1a1a;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  z-index: var(--z-toast);
+  animation: slideUp 0.3s ease;
+}
+
+.undo-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #60a5fa;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.undo-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: #93c5fd;
+}
+
+@keyframes slideUp {
+  from { transform: translate(-50%, 100%); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+/* =============================================================================
+   LOADING & EMPTY STATES (Enhanced for API data)
+   ============================================================================= */
+
+/* Loading State */
+.sidebar-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  color: var(--text-secondary);
+  gap: var(--spacing-md);
+  text-align: center;
+}
+
+.sidebar-loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-primary);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.sidebar-loading-text {
+  font-family: var(--gemini-font);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Empty State */
+.sidebar-empty {
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  text-align: center;
+  color: var(--text-secondary);
+  font-family: var(--gemini-font);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.sidebar-empty-icon {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto var(--spacing-md);
+  opacity: 0.4;
+}
+
+/* Error State */
+.sidebar-error {
+  padding: var(--spacing-lg);
+  margin: var(--spacing-md) 0;
+  background-color: color-mix(in srgb, red 10%, transparent);
+  border: 1px solid color-mix(in srgb, red 30%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sidebar-error-title {
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Skeleton Loading for Chat Items */
+.chat-skeleton {
+  padding: 10px var(--spacing-lg);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--bg-secondary) 25%,
+    var(--hover-bg) 50%,
+    var(--bg-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  height: 40px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* =============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================= */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-width: 260px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: var(--z-sidebar);
+    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.15);
+  }
+  
+  .dashboard-shell.expanded .sidebar {
+    width: min(280px, 80vw);
+    margin: 0;
+    border-radius: 0;
+    height: 100vh;
+  }
+  
+  .content-wrapper {
+    width: 100%;
+  }
+  
+  .dashboard-shell.expanded::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: calc(var(--z-sidebar) - 1);
+    animation: fadeIn 0.3s ease;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* =============================================================================
+   ACCESSIBILITY & FOCUS STATES
+   ============================================================================= */
+
+.sidebar-new-chat-button:focus-visible,
+.sidebar-toggle-button:focus-visible,
+.sidebar-open-button:focus-visible,
+.recent-chats-list .nav-link:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* =============================================================================
+   UTILITY CLASSES
+   ============================================================================= */
+
+.sidebar-divider {
+  width: 100%;
+  height: 1px;
+  background-color: var(--border-primary);
+  margin: var(--spacing-lg) 0;
+}
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* Fade-in animation for dynamically loaded content */
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Smooth list item appearance */
+.recent-chats-list li {
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+/* --- NEW: Sidebar Header & Menu Styles --- */
+.recent-chats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: var(--spacing-lg);
+  position: relative; /* For dropdown positioning */
+}
+
+.three-dots-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.three-dots-btn:hover, .three-dots-btn.active {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+/* --- Dropdown Menu --- */
+.chat-options-dropdown {
+  position: absolute;
+  right: var(--spacing-lg);
+  top: 30px; /* Below the dots */
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-dropdown);
+  min-width: 140px;
+  overflow: hidden;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.dropdown-item {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: var(--gemini-font);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.dropdown-item.danger {
+  color: #ef4444;
+}
+
+.dropdown-item.danger:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Animation for Dropdown */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* --- NEW: Sidebar Header & Menu Styles --- */
+.recent-chats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: var(--spacing-lg);
+  position: relative; /* For dropdown positioning */
+}
+
+.three-dots-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.three-dots-btn:hover, .three-dots-btn.active {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+/* --- Dropdown Menu --- */
+.chat-options-dropdown {
+  position: absolute;
+  right: var(--spacing-lg);
+  top: 30px; /* Below the dots */
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-dropdown);
+  min-width: 140px;
+  overflow: hidden;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.dropdown-item {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: var(--gemini-font);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.dropdown-item.danger {
+  color: #ef4444;
+}
+
+.dropdown-item.danger:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Animation for Dropdown */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

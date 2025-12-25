@@ -1,0 +1,26 @@
+# Python bytecode/cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments (common names)
+venv/
+.env/
+.venv/
+env/
+ENV/
+pipenv/
+poetry.lock
+
+# Environment variables
+*.env
+.env.*
+
+# Build/dist
+build/
+dist/
+*.egg-info/
+
+# IDE/project settings (optional)
+.vscode/
+.idea/

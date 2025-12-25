@@ -1,0 +1,129 @@
+/* src/routes/chatPage/chatPage.css */
+
+.chatPage {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  /* FIX: Use global theme variables instead of hardcoded dark colors */
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.wrapper {
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  scroll-behavior: smooth;
+  
+  /* Ensure text doesn't get cut off abruptly at the bottom */
+  padding-bottom: 20px; 
+
+  /* Hide scrollbars but keep functionality */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.chat {
+  width: 100%;
+  max-width: 800px; /* Constrained width for better readability */
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 40px;
+  /* Add massive padding at bottom so the last message clears the input box */
+  padding-bottom: 140px; 
+}
+
+.empty-state {
+  text-align: center;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  margin-top: 20vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.message {
+  padding: 20px;
+  line-height: 1.6;
+  border-radius: 12px;
+  font-size: 1rem;
+  max-width: 85%;
+}
+
+/* FIX: User bubbles use tertiary background (Light Grey in Light mode, Dark Grey in Dark mode) */
+.message.user {
+  background-color: var(--bg-tertiary); 
+  color: var(--text-primary);
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+.message.ai, .message.model {
+  background-color: transparent; 
+  color: var(--text-primary);
+  align-self: flex-start;
+  max-width: 100%;
+  padding-left: 0;
+}
+
+/* Pulse animation for "Thinking..." state */
+.message.thinking {
+  opacity: 0.7;
+  font-style: italic;
+  animation: pulse 1.5s infinite;
+}
+
+.message.error {
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Markdown Styling inside messages */
+.message p {
+  margin-bottom: 10px;
+}
+
+.message code {
+  /* FIX: Use variable for code blocks */
+  background-color: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.message pre {
+  background-color: var(--bg-tertiary);
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 12px 0;
+  border: 1px solid var(--border-primary);
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+@media (max-width: 768px) {
+  .chat {
+    width: 95%;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
