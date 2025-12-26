@@ -1,7 +1,11 @@
+// src/pages/DashboardPage/DashboardPage.jsx - FIXED
+
 import { useState, useRef } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import { motion } from "framer-motion";
+import { toast } from "react-hot-toast";
+import { api } from "../../lib/api";
 import "./dashboardPage.css";
 
 const YOUTUBE_URL_REGEX =
@@ -27,6 +31,7 @@ const ModernInputIcon = ({ type }) => {
 
 const DashboardPage = () => {
   const { user } = useUser();
+  const navigate = useNavigate();
   const { handleCreateChat } = useOutletContext();
   const fileInputRef = useRef(null);
   const formRef = useRef(null);
@@ -51,6 +56,65 @@ const DashboardPage = () => {
     },
   };
 
+  // ============================================================================
+  // HANDLE CHAT CREATION
+  // ============================================================================
+
+  const handleLocalCreateChat = async (prompt, mode = "question", file = null) => {
+  try {
+    setIsSubmitting(true);
+
+    if (mode === "youtube") {
+      // Extract YouTube link
+      const match = prompt.match(YOUTUBE_URL_REGEX);
+      const youtubeUrl = match ? match[0] : null;
+
+      if (!youtubeUrl) {
+        toast.error("Invalid YouTube URL");
+        return;
+      }
+
+      const uploadToast = toast.loading("Processing YouTube video...");
+
+      // Upload YouTube URL as video
+      const videoResponse = await api.videos.uploadYouTube(youtubeUrl);
+      
+      console.log('📥 Video response:', videoResponse);
+      
+      toast.success("Video processed successfully!", { id: uploadToast });
+
+      // ✅ FIX: Use conversation_id from video response
+      const conversationId = videoResponse?.conversation_id;
+
+      if (!conversationId) {
+        throw new Error('No conversation ID returned');
+      }
+
+      // Navigate to chat
+      navigate(`/dashboard/chats/${conversationId}`);
+      
+    } else if (mode === "document") {
+      // ... document handling
+    } else {
+      // ... regular chat
+    }
+
+  } catch (error) {
+    console.error("Error:", error);
+    toast.error(error.message || "An error occurred");
+  } finally {
+    setIsSubmitting(false);
+    
+    // Reset form
+    if (formRef.current) {
+      formRef.current.reset();
+    }
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  }
+};
+
   const onSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -58,36 +122,57 @@ const DashboardPage = () => {
     const data = new FormData(e.currentTarget);
     const prompt = (data.get("prompt") || "").toString().trim();
 
-    if (!prompt) return;
+    if (!prompt) {
+      toast.error("Please enter a message");
+      return;
+    }
 
-    setIsSubmitting(true);
+    // Detect mode
+    const hasYouTubeLink = YOUTUBE_URL_REGEX.test(prompt);
+    const mode = hasYouTubeLink ? "youtube" : "question";
 
-    try {
-      const hasYouTubeLink = YOUTUBE_URL_REGEX.test(prompt);
-      const mode = hasYouTubeLink ? "youtube" : "question";
-
+    // Use context handler if available, otherwise use local
+    if (handleCreateChat) {
       await handleCreateChat(prompt, mode);
-    } catch (error) {
-      console.error("Error submitting:", error);
-      alert("Failed to create chat. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      await handleLocalCreateChat(prompt, mode);
     }
   };
 
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
-    if (file && !isSubmitting) {
-      setIsSubmitting(true);
-      try {
+    
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+      'text/plain'
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Please upload PDF, DOCX, or TXT files.");
+      return;
+    }
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast.error("File size exceeds 10MB limit");
+      return;
+    }
+
+    if (!isSubmitting) {
+      // Use context handler if available, otherwise use local
+      if (handleCreateChat) {
         await handleCreateChat(file.name, "document", file);
-      } catch (error) {
-        console.error("Error uploading file:", error);
-        alert("Failed to upload file. Please try again.");
-      } finally {
-        setIsSubmitting(false);
+      } else {
+        await handleLocalCreateChat(file.name, "document", file);
       }
     }
+
     event.target.value = null;
   };
 
@@ -125,7 +210,7 @@ const DashboardPage = () => {
       animate="visible"
     >
       <motion.h2 className="page-title" variants={itemVariants}>
-        Hello, {user?.firstName || ""}
+        Hello, {user?.firstName || "Guest"}
       </motion.h2>
 
       <motion.div className="synced-content" variants={itemVariants}>
@@ -137,7 +222,7 @@ const DashboardPage = () => {
             ref={fileInputRef}
             onChange={handleFileChange}
             style={{ display: "none" }}
-            accept=".pdf,.docx"
+            accept=".pdf,.docx,.doc,.txt"
             disabled={isSubmitting}
           />
 
@@ -149,7 +234,7 @@ const DashboardPage = () => {
             <div className="input-container">
               <button
                 type="button"
-                className="input-button upload-btn"
+                className={`input-button upload-btn ${isSubmitting ? 'disabled' : ''}`}
                 aria-label="Upload file"
                 onClick={handleUploadClick}
                 disabled={isSubmitting}
@@ -162,7 +247,7 @@ const DashboardPage = () => {
                   ref={textareaRef}
                   className="modern-input"
                   name="prompt"
-                  placeholder="Ask anything, or paste a YouTube link..."
+                  placeholder="Ask anything, paste a YouTube link, or upload a document..."
                   autoComplete="off"
                   rows="1"
                   onInput={handleInputResize}
@@ -173,11 +258,15 @@ const DashboardPage = () => {
 
               <button
                 type="submit"
-                className="input-button modern-submit-btn"
+                className={`input-button modern-submit-btn ${isSubmitting ? 'disabled' : ''}`}
                 aria-label="Submit"
                 disabled={isSubmitting}
               >
-                <ModernInputIcon type="submit" />
+                {isSubmitting ? (
+                  <div className="spinner" />
+                ) : (
+                  <ModernInputIcon type="submit" />
+                )}
               </button>
             </div>
           </form>

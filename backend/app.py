@@ -11,9 +11,9 @@ from database.connection import db_connection
 
 
 # Middleware
-from middleware.error_handler import register_error_handlers
-from middleware.request_logger import register_request_logger
-from middleware.auth import initialize_clerk 
+from backend.middleware.error_handler import register_error_handlers
+from backend.middleware.request_logger import register_request_logger
+from backend.middleware.auth import initialize_clerk 
 
 
 # Initialize AI Services
@@ -46,7 +46,7 @@ from flask import Blueprint, request, g
 from werkzeug.utils import secure_filename
 
 
-from middleware.auth import require_auth
+from backend.middleware.auth import require_auth
 from core.responses import success_response, error_response
 from core.exceptions import ValidationError, ResourceNotFoundError
 from utils.validators import validate_youtube_url, validate_file_upload

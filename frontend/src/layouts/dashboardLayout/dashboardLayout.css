@@ -1,6 +1,5 @@
 /* =============================================================================
-   DASHBOARD SIDEBAR - ENHANCED PRODUCTION CSS
-   Supports both localStorage and API-based chat loading
+   DASHBOARD SIDEBAR - PRODUCTION CSS
    ============================================================================= */
 
 /* --- CSS Variables --- */
@@ -32,6 +31,7 @@
   --z-sidebar-toggle: 1200;
   --z-sidebar: 1100;
   --z-content: 1000;
+  --z-dropdown: 1150;
   --z-toast: 1300;
 }
 
@@ -329,35 +329,6 @@
   opacity: 1;
 }
 
-/* --- Keyboard Shortcuts --- */
-.sidebar-shortcut {
-  font-family: var(--gemini-font);
-  font-size: 11px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  margin-left: auto;
-  padding: 2px 6px;
-  background-color: var(--bg-secondary);
-  border-radius: 4px;
-  border: 1px solid var(--border-primary);
-  font-weight: 500;
-  letter-spacing: 0.5px;
-}
-
-.shortcut-on-hover {
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
-  transform: translateX(-4px);
-}
-
-.sidebar-new-chat-button:hover .shortcut-on-hover,
-.sidebar-search-chat:hover .shortcut-on-hover {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(0);
-}
-
 /* =============================================================================
    RECENT CHATS SECTION
    ============================================================================= */
@@ -395,6 +366,14 @@
   background-color: var(--text-secondary);
 }
 
+.recent-chats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: var(--spacing-lg);
+  position: relative;
+}
+
 .recent-chats-title {
   font-family: var(--gemini-font);
   font-size: 11px;
@@ -417,9 +396,10 @@
 
 .recent-chats-list li {
   margin: 0;
+  animation: slideIn 0.2s ease;
 }
 
-/* --- Navigation Links & Delete Button --- */
+/* --- Navigation Links --- */
 .recent-chats-list .nav-link {
   display: flex;
   align-items: center;
@@ -432,7 +412,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   position: relative;
-  padding-right: 40px; /* Make space for delete button */
+  padding-right: 40px;
 }
 
 .recent-chats-list .nav-link:hover {
@@ -467,7 +447,7 @@
   white-space: nowrap;
 }
 
-/* Delete Button Styles */
+/* --- Delete Button --- */
 .delete-chat-btn {
   position: absolute;
   right: 8px;
@@ -479,7 +459,7 @@
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
-  opacity: 0; /* Hidden by default */
+  opacity: 0;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -495,51 +475,74 @@
   color: #ef4444;
 }
 
-/* --- Undo Toast Notification --- */
-.undo-toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #1a1a1a;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
+/* --- Three Dots Menu --- */
+.three-dots-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
-  gap: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  z-index: var(--z-toast);
-  animation: slideUp 0.3s ease;
-}
-
-.undo-btn {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.2);
-  color: #60a5fa;
-  padding: 4px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
+  justify-content: center;
   transition: all 0.2s ease;
 }
 
-.undo-btn:hover {
-  background: rgba(255,255,255,0.1);
-  color: #93c5fd;
+.three-dots-btn:hover,
+.three-dots-btn.active {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
 }
 
-@keyframes slideUp {
-  from { transform: translate(-50%, 100%); opacity: 0; }
-  to { transform: translate(-50%, 0); opacity: 1; }
+/* --- Dropdown Menu --- */
+.chat-options-dropdown {
+  position: absolute;
+  right: var(--spacing-lg);
+  top: 30px;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: var(--z-dropdown);
+  min-width: 140px;
+  overflow: hidden;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.dropdown-item {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-family: var(--gemini-font);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.dropdown-item.danger {
+  color: #ef4444;
+}
+
+.dropdown-item.danger:hover {
+  background-color: rgba(239, 68, 68, 0.1);
 }
 
 /* =============================================================================
-   LOADING & EMPTY STATES (Enhanced for API data)
+   LOADING & EMPTY STATES
    ============================================================================= */
 
-/* Loading State */
 .sidebar-loading {
   display: flex;
   flex-direction: column;
@@ -560,17 +563,12 @@
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 .sidebar-loading-text {
   font-family: var(--gemini-font);
   font-size: 13px;
   color: var(--text-secondary);
 }
 
-/* Empty State */
 .sidebar-empty {
   padding: var(--spacing-2xl) var(--spacing-lg);
   text-align: center;
@@ -580,14 +578,6 @@
   line-height: 1.6;
 }
 
-.sidebar-empty-icon {
-  width: 40px;
-  height: 40px;
-  margin: 0 auto var(--spacing-md);
-  opacity: 0.4;
-}
-
-/* Error State */
 .sidebar-error {
   padding: var(--spacing-lg);
   margin: var(--spacing-md) 0;
@@ -599,43 +589,40 @@
   line-height: 1.5;
 }
 
-.sidebar-error-title {
-  font-weight: 600;
-  margin-bottom: var(--spacing-xs);
+/* =============================================================================
+   ANIMATIONS
+   ============================================================================= */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-/* Skeleton Loading for Chat Items */
-.chat-skeleton {
-  padding: 10px var(--spacing-lg);
-  border-radius: var(--radius-sm);
-  background: linear-gradient(
-    90deg,
-    var(--bg-secondary) 25%,
-    var(--hover-bg) 50%,
-    var(--bg-secondary) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  height: 40px;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* =============================================================================
    RESPONSIVE DESIGN
    ============================================================================= */
 
-/* Tablet */
 @media (max-width: 1024px) {
   :root {
     --sidebar-width: 260px;
   }
 }
 
-/* Mobile */
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
@@ -665,17 +652,11 @@
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
     z-index: calc(var(--z-sidebar) - 1);
-    animation: fadeIn 0.3s ease;
   }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 /* =============================================================================
-   ACCESSIBILITY & FOCUS STATES
+   ACCESSIBILITY
    ============================================================================= */
 
 .sidebar-new-chat-button:focus-visible,
@@ -686,7 +667,6 @@
   outline-offset: 2px;
 }
 
-/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -695,194 +675,4 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-/* =============================================================================
-   UTILITY CLASSES
-   ============================================================================= */
-
-.sidebar-divider {
-  width: 100%;
-  height: 1px;
-  background-color: var(--border-primary);
-  margin: var(--spacing-lg) 0;
-}
-
-.sidebar-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-/* Fade-in animation for dynamically loaded content */
-.fade-in {
-  animation: fadeIn 0.3s ease;
-}
-
-/* Smooth list item appearance */
-.recent-chats-list li {
-  animation: slideIn 0.2s ease;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-/* --- NEW: Sidebar Header & Menu Styles --- */
-.recent-chats-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-right: var(--spacing-lg);
-  position: relative; /* For dropdown positioning */
-}
-
-.three-dots-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.three-dots-btn:hover, .three-dots-btn.active {
-  background-color: var(--hover-bg);
-  color: var(--text-primary);
-}
-
-/* --- Dropdown Menu --- */
-.chat-options-dropdown {
-  position: absolute;
-  right: var(--spacing-lg);
-  top: 30px; /* Below the dots */
-  background-color: var(--bg-elevated);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
-  z-index: var(--z-dropdown);
-  min-width: 140px;
-  overflow: hidden;
-  animation: fadeIn 0.15s ease-out;
-}
-
-.dropdown-item {
-  width: 100%;
-  text-align: left;
-  padding: 8px 12px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-family: var(--gemini-font);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.2s;
-}
-
-.dropdown-item:hover {
-  background-color: var(--hover-bg);
-  color: var(--text-primary);
-}
-
-.dropdown-item.danger {
-  color: #ef4444;
-}
-
-.dropdown-item.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-}
-
-/* Animation for Dropdown */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-/* --- NEW: Sidebar Header & Menu Styles --- */
-.recent-chats-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-right: var(--spacing-lg);
-  position: relative; /* For dropdown positioning */
-}
-
-.three-dots-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.three-dots-btn:hover, .three-dots-btn.active {
-  background-color: var(--hover-bg);
-  color: var(--text-primary);
-}
-
-/* --- Dropdown Menu --- */
-.chat-options-dropdown {
-  position: absolute;
-  right: var(--spacing-lg);
-  top: 30px; /* Below the dots */
-  background-color: var(--bg-elevated);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
-  z-index: var(--z-dropdown);
-  min-width: 140px;
-  overflow: hidden;
-  animation: fadeIn 0.15s ease-out;
-}
-
-.dropdown-item {
-  width: 100%;
-  text-align: left;
-  padding: 8px 12px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-family: var(--gemini-font);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.2s;
-}
-
-.dropdown-item:hover {
-  background-color: var(--hover-bg);
-  color: var(--text-primary);
-}
-
-.dropdown-item.danger {
-  color: #ef4444;
-}
-
-.dropdown-item.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-}
-
-/* Animation for Dropdown */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
 }

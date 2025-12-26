@@ -1,0 +1,3 @@
+2025-12-25 18:22:13 | INFO     | spectra_ai | setup_logging:126 | ✅ Logging system initialized
+2025-12-25 18:22:13 | INFO     | spectra_ai | setup_logging:127 | 📝 Log file: spectraai.log
+2025-12-25 18:22:13 | INFO     | spectra_ai | setup_logging:128 | ❌ Error log: R:\2025\Projects\Spectra-AI\backend\logs\errors.log
