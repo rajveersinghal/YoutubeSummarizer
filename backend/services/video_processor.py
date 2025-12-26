@@ -1,19 +1,36 @@
-# backend/services/video_processor.py - VIDEO PROCESSING
+# backend/services/video_processor.py - WITH WHISPER TRANSCRIPTION
 
+import whisper
+import os
+import tempfile
+from pathlib import Path
 from youtube_transcript_api import YouTubeTranscriptApi
-from pytube import YouTube
 import re
 from config.logging_config import logger
+from config.settings import settings
 
 class VideoProcessor:
-    """Process videos and extract transcripts"""
+    """Process videos and extract transcripts using Whisper"""
     
     def __init__(self):
         self.youtube_regex = r'(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)'
+        self.whisper_model = None
+    
+    def _load_whisper(self):
+        """Lazy load Whisper model"""
+        if self.whisper_model is None:
+            try:
+                logger.info(f"🎤 Loading Whisper model: {settings.WHISPER_MODEL_SIZE}")
+                self.whisper_model = whisper.load_model(settings.WHISPER_MODEL_SIZE)
+                logger.info("✅ Whisper model loaded")
+            except Exception as e:
+                logger.error(f"❌ Failed to load Whisper: {e}")
+                raise
+        return self.whisper_model
     
     async def process_youtube(self, youtube_url: str, video_id: str) -> dict:
         """
-        Process YouTube video and extract transcript
+        Process YouTube video - try transcript API first, then Whisper
         
         Args:
             youtube_url: YouTube video URL
@@ -30,32 +47,36 @@ class VideoProcessor:
             
             yt_video_id = match.group(1)
             
-            logger.info(f"📹 Extracting YouTube video ID: {yt_video_id}")
+            logger.info(f"📹 Processing YouTube video: {yt_video_id}")
             
-            # Get video info
-            try:
-                yt = YouTube(youtube_url)
-                title = yt.title
-                duration = yt.length
-            except Exception as e:
-                logger.warning(f"⚠️ Could not get video info: {e}")
-                title = "YouTube Video"
-                duration = 0
+            title = f"YouTube Video ({yt_video_id})"
+            duration = 0
+            transcript = ""
             
-            # Get transcript
+            # Try YouTube Transcript API first (faster)
             try:
+                logger.info("🔍 Trying YouTube Transcript API...")
                 transcript_list = YouTubeTranscriptApi.get_transcript(yt_video_id)
                 transcript = " ".join([entry['text'] for entry in transcript_list])
-                logger.info(f"✅ Transcript extracted ({len(transcript)} chars)")
+                logger.info(f"✅ Transcript extracted via API ({len(transcript)} chars)")
             except Exception as e:
-                logger.warning(f"⚠️ Could not get transcript: {e}")
-                transcript = ""
+                logger.warning(f"⚠️ Transcript API failed: {e}")
+                logger.info("🎤 Falling back to Whisper transcription...")
+                
+                # TODO: Download YouTube video and transcribe with Whisper
+                # This requires yt-dlp package
+                # For now, raise error
+                raise ValueError("No transcript available. Whisper fallback not yet implemented for YouTube.")
+            
+            if not transcript:
+                raise ValueError("No transcript could be extracted")
             
             return {
                 "title": title,
                 "transcript": transcript,
                 "duration": duration,
-                "youtube_video_id": yt_video_id
+                "youtube_video_id": yt_video_id,
+                "method": "api"
             }
             
         except Exception as e:
@@ -64,7 +85,7 @@ class VideoProcessor:
     
     async def process_video_file(self, file_path: str, video_id: str) -> dict:
         """
-        Process uploaded video file
+        Process uploaded video file using Whisper
         
         Args:
             file_path: Path to video file
@@ -74,13 +95,25 @@ class VideoProcessor:
             dict with transcript, duration
         """
         try:
-            # For now, return empty transcript
-            # You can add whisper processing here later
+            logger.info(f"🎤 Transcribing video file: {file_path}")
+            
+            # Load Whisper model
+            model = self._load_whisper()
+            
+            # Transcribe
+            result = model.transcribe(file_path)
+            
+            transcript = result["text"]
+            duration = result.get("duration", 0)
+            
+            logger.info(f"✅ Video transcribed ({len(transcript)} chars, {duration}s)")
+            
             return {
-                "transcript": "",
-                "duration": 0
+                "transcript": transcript,
+                "duration": duration,
+                "method": "whisper"
             }
             
         except Exception as e:
-            logger.error(f"❌ Video file processing error: {e}")
+            logger.error(f"❌ Video transcription error: {e}")
             raise

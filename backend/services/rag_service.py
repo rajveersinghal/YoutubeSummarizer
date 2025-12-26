@@ -1,582 +1,293 @@
-# services/rag_service.py - FASTAPI ASYNC VERSION (COMPLETE)
-import asyncio
-from typing import List, Dict, Tuple, Optional, Any
-import numpy as np
-import google.generativeai as genai
+# backend/services/rag_service.py - COMPLETE RAG SYSTEM
 
-from services.embedding_service import embedding_service, get_embedding_model
-from models.chunk import get_chunks_by_video
-from config.settings import settings
+import chromadb
+from chromadb.config import Settings as ChromaSettings
+from sentence_transformers import SentenceTransformer
+from typing import List, Dict, Optional
+import uuid
 from config.logging_config import logger
 
-
-# ============================================================================
-# GEMINI CONFIGURATION
-# ============================================================================
-
-# Configure Gemini API
-genai.configure(api_key=settings.GEMINI_API_KEY)
-
-
-def get_gemini_model():
-    """
-    Get configured Gemini model
-    
-    Returns:
-        Configured GenerativeModel instance
-    """
-    try:
-        return genai.GenerativeModel(
-            model_name=settings.GEMINI_MODEL,
-            generation_config={
-                "temperature": settings.GEMINI_TEMPERATURE,
-                "max_output_tokens": settings.GEMINI_MAX_OUTPUT_TOKENS,
-            }
-        )
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize Gemini model: {e}")
-        raise
-
-
-# ============================================================================
-# RAG SERVICE
-# ============================================================================
-
 class RAGService:
-    """Retrieval-Augmented Generation service"""
+    """RAG Service for document and video embeddings"""
     
     def __init__(self):
-        self.embedding_service = embedding_service
-        self.default_top_k = settings.TOP_K_CHUNKS
+        """Initialize RAG with ChromaDB and embeddings"""
+        try:
+            # Initialize ChromaDB
+            self.chroma_client = chromadb.Client(ChromaSettings(
+                anonymized_telemetry=False,
+                allow_reset=True
+            ))
+            
+            # Get or create collections
+            self.doc_collection = self.chroma_client.get_or_create_collection(
+                name="documents",
+                metadata={"hnsw:space": "cosine"}
+            )
+            
+            self.video_collection = self.chroma_client.get_or_create_collection(
+                name="videos",
+                metadata={"hnsw:space": "cosine"}
+            )
+            
+            # Initialize embedding model
+            self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+            
+            logger.info("✅ RAG Service initialized")
+            
+        except Exception as e:
+            logger.error(f"❌ RAG initialization failed: {e}")
+            raise
     
-    async def search_relevant_chunks(
-        self,
-        video_id: str,
-        question: str,
-        top_k: int = None
-    ) -> List[Dict[str, Any]]:
+    def chunk_text(self, text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
         """
-        Search for relevant chunks using semantic similarity
+        Split text into overlapping chunks
         
         Args:
-            video_id: Video ID
-            question: User question
-            top_k: Number of chunks to retrieve
-        
+            text: Text to chunk
+            chunk_size: Size of each chunk (words)
+            overlap: Overlap between chunks (words)
+            
         Returns:
-            List of relevant chunks with similarity scores
+            List of text chunks
+        """
+        words = text.split()
+        chunks = []
+        
+        for i in range(0, len(words), chunk_size - overlap):
+            chunk = ' '.join(words[i:i + chunk_size])
+            if chunk.strip():
+                chunks.append(chunk)
+        
+        logger.info(f"📚 Created {len(chunks)} chunks from text")
+        return chunks
+    
+    def add_document(
+        self,
+        document_id: str,
+        title: str,
+        content: str,
+        metadata: Optional[Dict] = None
+    ):
+        """
+        Add document to vector database
+        
+        Args:
+            document_id: Unique document ID
+            title: Document title
+            content: Document content
+            metadata: Additional metadata
         """
         try:
-            top_k = top_k or self.default_top_k
+            # Chunk the content
+            chunks = self.chunk_text(content, chunk_size=500, overlap=50)
             
-            logger.info(f"🔍 Searching for relevant chunks in video {video_id}")
+            # Generate embeddings
+            embeddings = self.embedder.encode(chunks).tolist()
             
-            # Generate question embedding
-            question_embedding = await self.embedding_service.generate_single_embedding(question)
+            # Create IDs for each chunk
+            chunk_ids = [f"{document_id}_chunk_{i}" for i in range(len(chunks))]
             
-            # Get all chunks for video
-            chunks = await get_chunks_by_video(video_id, include_embeddings=True)
+            # Create metadata for each chunk
+            metadatas = []
+            for i, chunk in enumerate(chunks):
+                meta = {
+                    "document_id": document_id,
+                    "title": title,
+                    "chunk_index": i,
+                    "total_chunks": len(chunks),
+                    "type": "document"
+                }
+                if metadata:
+                    meta.update(metadata)
+                metadatas.append(meta)
             
-            if not chunks:
-                logger.warning(f"⚠️  No chunks found for video {video_id}")
-                return []
+            # Add to collection
+            self.doc_collection.add(
+                ids=chunk_ids,
+                documents=chunks,
+                embeddings=embeddings,
+                metadatas=metadatas
+            )
             
-            # Extract embeddings
-            chunk_embeddings = [np.array(chunk['embedding']) for chunk in chunks]
+            logger.info(f"✅ Added document {document_id} ({len(chunks)} chunks)")
             
-            # Find similar chunks
-            similar_indices = self.embedding_service.find_similar_chunks(
-                question_embedding,
-                chunk_embeddings,
-                top_k=top_k
+        except Exception as e:
+            logger.error(f"❌ Failed to add document: {e}")
+            raise
+    
+    def add_video(
+        self,
+        video_id: str,
+        title: str,
+        transcript: str,
+        metadata: Optional[Dict] = None
+    ):
+        """
+        Add video transcript to vector database
+        
+        Args:
+            video_id: Unique video ID
+            title: Video title
+            transcript: Video transcript
+            metadata: Additional metadata
+        """
+        try:
+            # Chunk the transcript
+            chunks = self.chunk_text(transcript, chunk_size=500, overlap=50)
+            
+            # Generate embeddings
+            embeddings = self.embedder.encode(chunks).tolist()
+            
+            # Create IDs for each chunk
+            chunk_ids = [f"{video_id}_chunk_{i}" for i in range(len(chunks))]
+            
+            # Create metadata for each chunk
+            metadatas = []
+            for i, chunk in enumerate(chunks):
+                meta = {
+                    "video_id": video_id,
+                    "title": title,
+                    "chunk_index": i,
+                    "total_chunks": len(chunks),
+                    "type": "video"
+                }
+                if metadata:
+                    meta.update(metadata)
+                metadatas.append(meta)
+            
+            # Add to collection
+            self.video_collection.add(
+                ids=chunk_ids,
+                documents=chunks,
+                embeddings=embeddings,
+                metadatas=metadatas
+            )
+            
+            logger.info(f"✅ Added video {video_id} ({len(chunks)} chunks)")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to add video: {e}")
+            raise
+    
+    def search_documents(self, query: str, n_results: int = 5) -> List[Dict]:
+        """
+        Search for relevant document chunks
+        
+        Args:
+            query: Search query
+            n_results: Number of results to return
+            
+        Returns:
+            List of relevant chunks with metadata
+        """
+        try:
+            # Generate query embedding
+            query_embedding = self.embedder.encode([query])[0].tolist()
+            
+            # Search in document collection
+            results = self.doc_collection.query(
+                query_embeddings=[query_embedding],
+                n_results=n_results
             )
             
             # Format results
-            relevant_chunks = []
-            for idx, similarity in similar_indices:
-                chunk = chunks[idx].copy()
-                chunk['similarity'] = similarity
-                # Remove embedding from response to reduce size
-                chunk.pop('embedding', None)
-                relevant_chunks.append(chunk)
+            formatted_results = []
+            if results['documents'] and len(results['documents']) > 0:
+                for i in range(len(results['documents'][0])):
+                    formatted_results.append({
+                        "content": results['documents'][0][i],
+                        "metadata": results['metadatas'][0][i],
+                        "distance": results['distances'][0][i] if 'distances' in results else None
+                    })
             
-            logger.info(f"✅ Found {len(relevant_chunks)} relevant chunks")
-            return relevant_chunks
-            
-        except Exception as e:
-            logger.error(f"❌ Chunk search failed: {e}")
-            raise
-    
-    def build_context(self, chunks: List[Dict[str, Any]]) -> str:
-        """
-        Build context string from chunks
-        
-        Args:
-            chunks: List of chunk dictionaries
-        
-        Returns:
-            Formatted context string
-        """
-        if not chunks:
-            return ""
-        
-        context_parts = []
-        for i, chunk in enumerate(chunks, 1):
-            text = chunk.get('text', '')
-            similarity = chunk.get('similarity', 0)
-            context_parts.append(f"[Context {i}] (Relevance: {similarity:.2f})\n{text}")
-        
-        return "\n\n".join(context_parts)
-    
-    def create_rag_prompt(
-        self,
-        question: str,
-        context: str,
-        system_instruction: Optional[str] = None
-    ) -> str:
-        """
-        Create RAG prompt for Gemini
-        
-        Args:
-            question: User question
-            context: Retrieved context
-            system_instruction: Optional system instruction
-        
-        Returns:
-            Formatted prompt
-        """
-        default_instruction = """You are a helpful AI assistant. Answer the question based ONLY on the provided context from the video transcript. 
-If the answer cannot be found in the context, say "I cannot find that information in the video."
-Provide concise, accurate answers in 2-3 sentences."""
-        
-        instruction = system_instruction or default_instruction
-        
-        prompt = f"""{instruction}
-
-Context from video transcript:
-{context}
-
-Question: {question}
-
-Answer:"""
-        
-        return prompt
-    
-    async def generate_answer_async(
-        self,
-        prompt: str,
-        model: Optional[Any] = None
-    ) -> str:
-        """
-        Generate answer using Gemini (async)
-        
-        Args:
-            prompt: Input prompt
-            model: Optional Gemini model instance
-        
-        Returns:
-            Generated answer
-        """
-        try:
-            if model is None:
-                model = get_gemini_model()
-            
-            logger.info("🤖 Generating answer with Gemini...")
-            
-            # Run in thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                model.generate_content,
-                prompt
-            )
-            
-            answer = response.text.strip() if hasattr(response, 'text') else "Unable to generate answer"
-            
-            logger.info(f"✅ Answer generated: {len(answer)} characters")
-            return answer
+            logger.info(f"🔍 Found {len(formatted_results)} relevant document chunks")
+            return formatted_results
             
         except Exception as e:
-            logger.error(f"❌ Answer generation failed: {e}")
-            raise
-    
-    async def answer_question_from_video(
-        self,
-        video_id: str,
-        question: str,
-        top_k: int = None,
-        model: Optional[Any] = None,
-        include_context: bool = True
-    ) -> Dict[str, Any]:
-        """
-        Answer question using RAG
-        
-        Args:
-            video_id: Video ID
-            question: User question
-            top_k: Number of chunks to retrieve
-            model: Optional Gemini model
-            include_context: Whether to include context in response
-        
-        Returns:
-            Dictionary with answer and metadata
-        """
-        try:
-            logger.info(f"❓ Answering question for video {video_id}")
-            
-            # Search relevant chunks
-            relevant_chunks = await self.search_relevant_chunks(
-                video_id,
-                question,
-                top_k
-            )
-            
-            if not relevant_chunks:
-                return {
-                    "answer": "No relevant information found in the video.",
-                    "confidence": 0.0,
-                    "sources": [],
-                    "context": ""
-                }
-            
-            # Build context
-            context = self.build_context(relevant_chunks)
-            
-            # Create prompt
-            prompt = self.create_rag_prompt(question, context)
-            
-            # Generate answer
-            answer = await self.generate_answer_async(prompt, model)
-            
-            # Calculate average confidence
-            avg_similarity = sum(c.get('similarity', 0) for c in relevant_chunks) / len(relevant_chunks)
-            
-            result = {
-                "answer": answer,
-                "confidence": float(avg_similarity),
-                "sources": [
-                    {
-                        "chunkIndex": chunk.get('chunkIndex'),
-                        "text": chunk.get('text'),
-                        "similarity": chunk.get('similarity')
-                    }
-                    for chunk in relevant_chunks
-                ]
-            }
-            
-            if include_context:
-                result["context"] = context
-            
-            logger.info("✅ RAG question answered successfully")
-            return result
-            
-        except Exception as e:
-            logger.error(f"❌ RAG error: {e}")
-            return {
-                "answer": f"Error: {str(e)}",
-                "confidence": 0.0,
-                "sources": [],
-                "context": ""
-            }
-    
-    async def answer_multiple_questions(
-        self,
-        video_id: str,
-        questions: List[str],
-        top_k: int = None
-    ) -> List[Dict[str, Any]]:
-        """
-        Answer multiple questions for a video
-        
-        Args:
-            video_id: Video ID
-            questions: List of questions
-            top_k: Number of chunks per question
-        
-        Returns:
-            List of answer dictionaries
-        """
-        try:
-            logger.info(f"❓ Answering {len(questions)} questions for video {video_id}")
-            
-            # Process all questions concurrently
-            tasks = [
-                self.answer_question_from_video(video_id, q, top_k, include_context=False)
-                for q in questions
-            ]
-            
-            results = await asyncio.gather(*tasks)
-            
-            return results
-            
-        except Exception as e:
-            logger.error(f"❌ Multiple questions error: {e}")
+            logger.error(f"❌ Document search failed: {e}")
             return []
     
-    async def summarize_video(
-        self,
-        video_id: str,
-        max_chunks: int = 10,
-        model: Optional[Any] = None
-    ) -> str:
+    def search_videos(self, query: str, n_results: int = 5) -> List[Dict]:
         """
-        Generate video summary using top chunks
+        Search for relevant video chunks
         
         Args:
-            video_id: Video ID
-            max_chunks: Maximum chunks to use
-            model: Optional Gemini model
-        
+            query: Search query
+            n_results: Number of results to return
+            
         Returns:
-            Video summary
+            List of relevant chunks with metadata
         """
         try:
-            logger.info(f"📝 Generating summary for video {video_id}")
+            # Generate query embedding
+            query_embedding = self.embedder.encode([query])[0].tolist()
             
-            # Get chunks
-            chunks = await get_chunks_by_video(video_id)
-            
-            if not chunks:
-                return "No content available for summarization."
-            
-            # Take first N chunks
-            selected_chunks = chunks[:max_chunks]
-            context = "\n\n".join([c['text'] for c in selected_chunks])
-            
-            prompt = f"""Summarize the following video transcript in 3-4 sentences:
-
-{context}
-
-Summary:"""
-            
-            summary = await self.generate_answer_async(prompt, model)
-            
-            logger.info("✅ Summary generated")
-            return summary
-            
-        except Exception as e:
-            logger.error(f"❌ Summarization failed: {e}")
-            return f"Error generating summary: {str(e)}"
-    
-    async def chat_with_video(
-        self,
-        video_id: str,
-        messages: List[Dict[str, str]],
-        top_k: int = None
-    ) -> str:
-        """
-        Chat with video using conversation history
-        
-        Args:
-            video_id: Video ID
-            messages: List of message dicts with 'role' and 'content'
-            top_k: Number of chunks to retrieve
-        
-        Returns:
-            AI response
-        """
-        try:
-            logger.info(f"💬 Chat with video {video_id}")
-            
-            # Get last user message
-            last_message = messages[-1]['content'] if messages else ""
-            
-            # Search relevant chunks
-            relevant_chunks = await self.search_relevant_chunks(
-                video_id,
-                last_message,
-                top_k
+            # Search in video collection
+            results = self.video_collection.query(
+                query_embeddings=[query_embedding],
+                n_results=n_results
             )
             
-            # Build context
-            context = self.build_context(relevant_chunks)
+            # Format results
+            formatted_results = []
+            if results['documents'] and len(results['documents']) > 0:
+                for i in range(len(results['documents'][0])):
+                    formatted_results.append({
+                        "content": results['documents'][0][i],
+                        "metadata": results['metadatas'][0][i],
+                        "distance": results['distances'][0][i] if 'distances' in results else None
+                    })
             
-            # Build conversation history
-            history = "\n".join([
-                f"{msg['role'].upper()}: {msg['content']}"
-                for msg in messages[:-1]
-            ])
-            
-            prompt = f"""You are chatting about a video. Use the context below and conversation history to answer.
-
-Context from video:
-{context}
-
-Conversation history:
-{history}
-
-User: {last_message}
-Assistant:"""
-            
-            response = await self.generate_answer_async(prompt)
-            
-            logger.info("✅ Chat response generated")
-            return response
+            logger.info(f"🔍 Found {len(formatted_results)} relevant video chunks")
+            return formatted_results
             
         except Exception as e:
-            logger.error(f"❌ Chat failed: {e}")
-            return f"Error: {str(e)}"
-
-
-# ============================================================================
-# GLOBAL RAG SERVICE INSTANCE
-# ============================================================================
-
-rag_service = RAGService()
-
-
-# ============================================================================
-# CONVENIENCE FUNCTIONS (Backward Compatibility)
-# ============================================================================
-
-def answer_question_from_video(
-    video_id: str,
-    question: str,
-    vector_store=None,
-    model=None,
-    top_k: int = 5
-) -> Tuple[str, List[Dict]]:
-    """
-    Answer question using RAG (sync wrapper for backward compatibility)
+            logger.error(f"❌ Video search failed: {e}")
+            return []
     
-    Args:
-        video_id: Video ID
-        question: User question
-        vector_store: (Deprecated) Not used anymore
-        model: Optional Gemini model
-        top_k: Number of chunks to retrieve
-    
-    Returns:
-        Tuple of (answer, context_chunks)
-    """
-    try:
-        logger.info(f"❓ Answering question for video {video_id}")
+    def search_all(self, query: str, n_results: int = 5) -> Dict[str, List[Dict]]:
+        """
+        Search across both documents and videos
         
-        # Get embedding
-        embedding_model = get_embedding_model()
-        question_embedding = embedding_model.encode([question])[0]
-        
-        # Get chunks from database (sync version)
-        import asyncio
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        chunks = loop.run_until_complete(get_chunks_by_video(video_id, include_embeddings=True))
-        
-        if not chunks:
-            logger.warning(f"No relevant chunks found for video {video_id}")
-            return "No relevant information found in the video.", []
-        
-        # Extract embeddings
-        chunk_embeddings = [np.array(chunk['embedding']) for chunk in chunks]
-        
-        # Find similar chunks
-        from sklearn.metrics.pairwise import cosine_similarity
-        
-        similarities = cosine_similarity(
-            question_embedding.reshape(1, -1),
-            np.array(chunk_embeddings)
-        )[0]
-        
-        # Get top k indices
-        top_indices = np.argsort(similarities)[::-1][:top_k]
-        
-        context_chunks = []
-        for idx in top_indices:
-            chunk = chunks[idx].copy()
-            chunk['similarity'] = float(similarities[idx])
-            chunk.pop('embedding', None)
-            context_chunks.append(chunk)
-        
-        logger.info(f"Found {len(context_chunks)} relevant chunks")
-        
-        # Build context
-        context = "\n\n".join([chunk["text"] for chunk in context_chunks])
-        
-        # Create prompt
-        prompt = f"""Answer based on this video transcript:
-
-{context}
-
-Question: {question}
-
-Answer in 2-3 sentences:"""
-        
-        # Generate answer
-        if model is None:
-            model = get_gemini_model()
-        
-        response = model.generate_content(prompt)
-        answer = response.text.strip() if hasattr(response, 'text') else "Unable to generate answer"
-        
-        logger.info(f"✅ Answer generated")
-        
-        return answer, context_chunks
-        
-    except Exception as e:
-        logger.error(f"❌ RAG error: {e}")
-        return f"Error: {str(e)}", []
-
-
-async def answer_question_async(
-    video_id: str,
-    question: str,
-    top_k: int = 5,
-    model=None
-) -> Dict[str, Any]:
-    """
-    Answer question using RAG (async wrapper)
-    
-    Args:
-        video_id: Video ID
-        question: User question
-        top_k: Number of chunks to retrieve
-        model: Optional Gemini model
-    
-    Returns:
-        Dictionary with answer and metadata
-    """
-    return await rag_service.answer_question_from_video(
-        video_id,
-        question,
-        top_k,
-        model
-    )
-
-
-async def summarize_video_async(
-    video_id: str,
-    max_chunks: int = 10
-) -> str:
-    """
-    Generate video summary (async wrapper)
-    
-    Args:
-        video_id: Video ID
-        max_chunks: Maximum chunks to use
-    
-    Returns:
-        Video summary
-    """
-    return await rag_service.summarize_video(video_id, max_chunks)
-
-
-async def chat_with_video_async(
-    video_id: str,
-    messages: List[Dict[str, str]],
-    top_k: int = 5
-) -> str:
-    """
-    Chat with video (async wrapper)
-    
-    Args:
-        video_id: Video ID
-        messages: Conversation history
-        top_k: Number of chunks to retrieve
-    
-    Returns:
-        AI response
-    """
-    return await rag_service.chat_with_video(video_id, messages, top_k)
-
-
+        Args:
+            query: Search query
+            n_results: Number of results per collection
             
+        Returns:
+            Dictionary with document and video results
+        """
+        return {
+            "documents": self.search_documents(query, n_results),
+            "videos": self.search_videos(query, n_results)
+        }
+    
+    def delete_document(self, document_id: str):
+        """Delete all chunks of a document"""
+        try:
+            # Get all chunk IDs for this document
+            results = self.doc_collection.get(
+                where={"document_id": document_id}
+            )
+            
+            if results['ids']:
+                self.doc_collection.delete(ids=results['ids'])
+                logger.info(f"✅ Deleted document {document_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to delete document: {e}")
+    
+    def delete_video(self, video_id: str):
+        """Delete all chunks of a video"""
+        try:
+            # Get all chunk IDs for this video
+            results = self.video_collection.get(
+                where={"video_id": video_id}
+            )
+            
+            if results['ids']:
+                self.video_collection.delete(ids=results['ids'])
+                logger.info(f"✅ Deleted video {video_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to delete video: {e}")

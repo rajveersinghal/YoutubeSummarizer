@@ -1,4 +1,4 @@
-# main.py - FASTAPI APPLICATION (Complete & Fixed - SYNC + VIDEOS)
+# main.py - FASTAPI APPLICATION (Complete & Fixed)
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException, status
@@ -77,22 +77,35 @@ async def lifespan(app: FastAPI):
         init_db()
         logger.info("✅ MongoDB initialized successfully")
         
-        # 2. Validate configuration
-        logger.info("🔍 Validating configuration...")
-        if settings.validate():
-            logger.info("✅ Configuration validated")
+        # 2. Check configuration
+        logger.info("🔍 Checking configuration...")
+        
+        config_status = []
+        if settings.GROQ_API_KEY:
+            config_status.append("✅ Groq API Key configured")
+        if settings.GEMINI_API_KEY:
+            config_status.append("✅ Gemini API Key configured")
+        if not settings.GROQ_API_KEY and not settings.GEMINI_API_KEY:
+            config_status.append("⚠️  No AI API key configured")
+        if settings.CLERK_SECRET_KEY:
+            config_status.append("✅ Clerk authentication configured")
         else:
-            logger.warning("⚠️  Configuration has warnings - check logs above")
+            config_status.append("⚠️  Clerk not configured")
+        
+        for status in config_status:
+            logger.info(f"  {status}")
+        
+        logger.info("✅ Configuration checked")
         
         # 3. Check required services
         logger.info("🔧 Checking services...")
         services_status = {
             "MongoDB": "✅ Connected",
-            "Clerk Auth": "✅ Configured" if settings.CLERK_SECRET_KEY else "❌ Not configured",
+            "Clerk Auth": "✅ Configured" if settings.CLERK_SECRET_KEY else "⚠️  Not configured",
+            "Groq AI": "✅ Configured" if settings.GROQ_API_KEY else "❌ Not configured",
             "Gemini AI": "✅ Configured" if settings.GEMINI_API_KEY else "❌ Not configured",
             "Storage": "✅ Ready",
             "Embeddings": "✅ Ready",
-            "Whisper": "✅ Ready",
             "YouTube": "✅ Ready",
             "Rate Limiting": "✅ Enabled" if settings.RATE_LIMIT_ENABLED else "⚠️  Disabled",
         }
@@ -107,15 +120,15 @@ async def lifespan(app: FastAPI):
         logger.info(f"  🌍 Environment: {settings.ENVIRONMENT}")
         logger.info(f"  🐛 Debug Mode: {settings.DEBUG}")
         logger.info(f"  🔐 Authentication: Clerk")
-        logger.info(f"  🤖 AI Model: {settings.GEMINI_MODEL}")
+        logger.info(f"  🤖 AI Models: Groq/Gemini")
         logger.info(f"  🧠 Embedding Model: {settings.EMBEDDING_MODEL}")
         logger.info(f"  🎤 Transcription: Whisper ({settings.WHISPER_MODEL_SIZE})")
         logger.info(f"  🎥 YouTube: Transcript API")
         logger.info(f"  💾 Database: {settings.MONGODB_DB_NAME}")
         logger.info(f"  📦 Storage: {settings.STORAGE_PATH}")
-        logger.info(f"  🌐 CORS Origins: {settings.allowed_origins_list}")
-        logger.info(f"  ⏱️  Rate Limit: {settings.RATE_LIMIT_PER_MINUTE}/min" if settings.RATE_LIMIT_ENABLED else "  ⏱️  Rate Limit: Disabled")
-        logger.info(f"  👑 Admin Users: {len(settings.admin_user_ids_list)}")
+        logger.info(f"  🌐 CORS: {', '.join(settings.ALLOWED_ORIGINS)}")
+        if settings.RATE_LIMIT_ENABLED:
+            logger.info(f"  ⏱️  Rate Limit: {settings.RATE_LIMIT_PER_MINUTE}/min")
         logger.info("=" * 80)
         
         logger.info("✅ Application startup completed successfully")
@@ -192,7 +205,7 @@ logger.info("✅ Error handlers registered")
 # 1. CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins_list,
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -277,7 +290,7 @@ async def add_security_headers(request: Request, call_next):
 
 app.include_router(auth.router, tags=["Authentication"])
 app.include_router(chat.router, tags=["Chat"])
-app.include_router(videos.router, tags=["Videos"])  # ✅ Videos router included
+app.include_router(videos.router, tags=["Videos"])
 app.include_router(documents.router, tags=["Documents"])
 app.include_router(history.router, tags=["History"])
 
@@ -296,7 +309,7 @@ async def root():
         "status": "running",
         "environment": settings.ENVIRONMENT,
         "authentication": "Clerk",
-        "aiModel": settings.GEMINI_MODEL,
+        "aiProviders": ["Groq", "Gemini"],
         "timestamp": datetime.utcnow().isoformat(),
         "endpoints": {
             "health": "/health",
@@ -313,7 +326,7 @@ async def root():
             "chat": True,
             "documents": True,
             "videos": True,
-            "youtube": True,  # ✅ YouTube feature
+            "youtube": True,
             "rag": True,
             "streaming": settings.ENABLE_STREAMING,
             "rateLimit": settings.RATE_LIMIT_ENABLED
@@ -324,7 +337,7 @@ async def root():
 async def health_check():
     """Comprehensive health check endpoint"""
     try:
-        # ✅ FIXED: Use sync health check
+        # Check database health
         db_health = check_db_health()
         
         services = {
@@ -334,9 +347,8 @@ async def health_check():
                 "provider": "Clerk"
             },
             "ai": {
-                "status": "configured" if settings.GEMINI_API_KEY else "not_configured",
-                "model": settings.GEMINI_MODEL,
-                "provider": "Google Gemini",
+                "groq": "configured" if settings.GROQ_API_KEY else "not_configured",
+                "gemini": "configured" if settings.GEMINI_API_KEY else "not_configured",
                 "streaming": settings.ENABLE_STREAMING
             },
             "embeddings": {
@@ -349,7 +361,7 @@ async def health_check():
                 "model": f"Whisper ({settings.WHISPER_MODEL_SIZE})",
                 "device": settings.WHISPER_DEVICE
             },
-            "youtube": {  # ✅ YouTube service status
+            "youtube": {
                 "status": "ready",
                 "provider": "YouTube Transcript API"
             },
@@ -363,7 +375,7 @@ async def health_check():
         all_healthy = (
             db_health.get("connected", False) and 
             settings.CLERK_SECRET_KEY and 
-            settings.GEMINI_API_KEY
+            (settings.GROQ_API_KEY or settings.GEMINI_API_KEY)
         )
         overall_status = "healthy" if all_healthy else "degraded"
         
@@ -390,7 +402,22 @@ async def health_check():
 @app.get("/info", tags=["Info"])
 async def app_info():
     """Application information endpoint"""
-    return settings.get_info()
+    return {
+        "name": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "environment": settings.ENVIRONMENT,
+        "debug": settings.DEBUG,
+        "database": settings.MONGODB_DB_NAME,
+        "ai_providers": {
+            "groq": bool(settings.GROQ_API_KEY),
+            "gemini": bool(settings.GEMINI_API_KEY)
+        },
+        "embedding_model": settings.EMBEDDING_MODEL,
+        "whisper_model": settings.WHISPER_MODEL_SIZE,
+        "storage": settings.STORAGE_PATH,
+        "rate_limiting": settings.RATE_LIMIT_ENABLED,
+        "streaming": settings.ENABLE_STREAMING,
+    }
 
 @app.get("/stats", tags=["Stats"])
 async def system_stats():
@@ -398,7 +425,7 @@ async def system_stats():
     try:
         db = get_db()
         
-        # ✅ FIXED: Sync database operations
+        # Get collection stats
         collections_stats = {}
         collection_names = ['users', 'conversations', 'messages', 'documents', 'videos', 'activities']
         
@@ -454,7 +481,7 @@ if __name__ == "__main__":
         logger.info(f"📖 ReDoc: http://{settings.HOST}:{settings.PORT}/api/redoc")
     
     logger.info(f"🔐 Authentication: Clerk")
-    logger.info(f"🤖 AI Model: {settings.GEMINI_MODEL}")
+    logger.info(f"🤖 AI: Groq/Gemini")
     logger.info(f"🎥 YouTube: Enabled")
     logger.info(f"💾 Database: {settings.MONGODB_DB_NAME}")
     logger.info(f"🌍 Environment: {settings.ENVIRONMENT}")

@@ -1175,3 +1175,56 @@ metadata {
 , locale: "en-US"
 message: "API key expired. Please renew the API key."
 ]
+2025-12-26 21:38:51 | ERROR    | spectraai | process_pdf:41 | ❌ PDF processing error: No text could be extracted from PDF
+2025-12-26 21:38:51 | ERROR    | spectraai | upload_document:104 | ❌ Document upload error: No text could be extracted from PDF
+Traceback (most recent call last):
+  File "R:\2025\Projects\Spectra-AI\backend\routes\documents.py", line 54, in upload_document
+    content = await doc_processor.process_pdf(str(file_path))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "R:\2025\Projects\Spectra-AI\backend\services\document_processor.py", line 34, in process_pdf
+    raise ValueError("No text could be extracted from PDF")
+ValueError: No text could be extracted from PDF
+2025-12-26 21:38:51 | ERROR    | spectraai | request_logger_middleware:227 | ❌ POST /api/documents/upload | Status: 500 | Duration: 2.774s
+2025-12-26 22:04:17 | ERROR    | spectraai | __init__:75 | ❌ No AI provider available!
+2025-12-26 22:09:55 | ERROR    | spectraai | lifespan:125 | ================================================================================
+2025-12-26 22:09:55 | CRITICAL | spectraai | lifespan:126 | ❌ STARTUP FAILED: 'Settings' object has no attribute 'validate'
+Traceback (most recent call last):
+  File "R:\2025\Projects\Spectra-AI\backend\main.py", line 82, in lifespan
+    if settings.validate():
+       ^^^^^^^^^^^^^^^^^
+AttributeError: 'Settings' object has no attribute 'validate'
+2025-12-26 22:09:55 | ERROR    | spectraai | lifespan:127 | ================================================================================
+2025-12-26 22:10:11 | ERROR    | spectraai | lifespan:125 | ================================================================================
+2025-12-26 22:10:11 | CRITICAL | spectraai | lifespan:126 | ❌ STARTUP FAILED: 'Settings' object has no attribute 'validate'
+Traceback (most recent call last):
+  File "R:\2025\Projects\Spectra-AI\backend\main.py", line 82, in lifespan
+    if settings.validate():
+       ^^^^^^^^^^^^^^^^^
+AttributeError: 'Settings' object has no attribute 'validate'
+2025-12-26 22:10:11 | ERROR    | spectraai | lifespan:127 | ================================================================================
+2025-12-26 22:12:04 | ERROR    | spectraai | lifespan:125 | ================================================================================
+2025-12-26 22:12:04 | CRITICAL | spectraai | lifespan:126 | ❌ STARTUP FAILED: 'Settings' object has no attribute 'validate'
+Traceback (most recent call last):
+  File "R:\2025\Projects\Spectra-AI\backend\main.py", line 82, in lifespan
+    if settings.validate():
+       ^^^^^^^^^^^^^^^^^
+AttributeError: 'Settings' object has no attribute 'validate'
+2025-12-26 22:12:04 | ERROR    | spectraai | lifespan:127 | ================================================================================
+2025-12-26 22:15:35 | ERROR    | spectraai | lifespan:125 | ================================================================================
+2025-12-26 22:15:35 | CRITICAL | spectraai | lifespan:126 | ❌ STARTUP FAILED: 'Settings' object has no attribute 'validate'
+Traceback (most recent call last):
+  File "R:\2025\Projects\Spectra-AI\backend\main.py", line 82, in lifespan
+    if settings.validate():
+       ^^^^^^^^^^^^^^^^^
+AttributeError: 'Settings' object has no attribute 'validate'
+2025-12-26 22:15:35 | ERROR    | spectraai | lifespan:127 | ================================================================================
+2025-12-26 22:15:44 | ERROR    | spectraai | lifespan:125 | ================================================================================
+2025-12-26 22:15:44 | CRITICAL | spectraai | lifespan:126 | ❌ STARTUP FAILED: 'Settings' object has no attribute 'validate'
+Traceback (most recent call last):
+  File "R:\2025\Projects\Spectra-AI\backend\main.py", line 82, in lifespan
+    if settings.validate():
+       ^^^^^^^^^^^^^^^^^
+AttributeError: 'Settings' object has no attribute 'validate'
+2025-12-26 22:15:44 | ERROR    | spectraai | lifespan:127 | ================================================================================
+2025-12-26 22:18:06 | ERROR    | spectraai | upload_youtube_video:79 | ❌ YouTube processing error: No transcript available for this video
+2025-12-26 22:18:46 | ERROR    | spectraai | upload_youtube_video:79 | ❌ YouTube processing error: No transcript available for this video
